@@ -1,0 +1,112 @@
+package pidev.eventconnect.services;
+
+import jakarta.persistence.EntityNotFoundException;
+import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import pidev.eventconnect.entities.Event;
+import pidev.eventconnect.repository.EventRepository;
+
+import java.time.LocalDate;
+import java.util.List;
+
+
+@Service
+@AllArgsConstructor
+public class EventServiceImpl implements IEventService{
+   @Autowired
+    EventRepository eventRepository;
+
+
+    @Override
+    public Event addEvent(Event event) {
+
+        List<Event> conflicts = eventRepository.findConflictingEvents(
+                event.getStartDate(),
+                event.getEndDate(),
+                event.getPlace()
+        );
+
+        if (!conflicts.isEmpty()) {
+            LocalDate newStart = event.getStartDate();
+            LocalDate newEnd = event.getEndDate();
+
+            while (!eventRepository.findConflictingEvents(newStart, newEnd, event.getPlace()).isEmpty()) {
+                newStart = newStart.plusDays(1);
+                newEnd = newEnd.plusDays(1);
+            }
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,  // 409 au lieu de 500
+                    "Conflict detected at " + event.getPlace() +
+                            ". Suggested new date: " + newStart + " - " + newEnd
+            );
+        }
+
+        return eventRepository.save(event);
+    }
+
+
+    @Override
+    public Page<Event> getAllEvent(Pageable pageable) {
+        return eventRepository.findAll(pageable);
+    }
+
+    @Override
+    public void removeEvent(Long id) {
+        eventRepository.deleteById(id);
+    }
+
+    @Override
+    public Event updateEvent(Long id, Event event) {
+        Event event1 = eventRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Event not found with ID: " + id));
+
+        List<Event> conflicts = eventRepository.findConflictingEvents(
+                event.getStartDate(),
+                event.getEndDate(),
+                event.getPlace()
+        );
+
+        conflicts.removeIf(e -> e.getId().equals(id));
+
+        if (!conflicts.isEmpty()) {
+            LocalDate newStart = event.getStartDate();
+            LocalDate newEnd = event.getEndDate();
+
+            while (!eventRepository.findConflictingEvents(newStart, newEnd, event.getPlace())
+                    .stream()
+                    .filter(e -> !e.getId().equals(id))
+                    .toList()
+                    .isEmpty()) {
+
+                newStart = newStart.plusDays(1);
+                newEnd = newEnd.plusDays(1);
+            }
+
+            throw new RuntimeException("⚠️ Conflict detected during modification. "
+                    + "New proposed date : " + newStart + " - " + newEnd);
+        }
+
+        event1.setDescription(event.getDescription());
+        event1.setTitle(event.getTitle());
+        event1.setPlace(event.getPlace());
+        event1.setStartDate(event.getStartDate());
+        event1.setEndDate(event.getEndDate());
+        event1.setCapacityMax(event.getCapacityMax());
+
+        return eventRepository.save(event1);
+    }
+
+    @Override
+    public Event retrieveEvent(Long id) {
+        return eventRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "event not found"));
+    }
+
+
+}
