@@ -98,6 +98,7 @@ public class EventServiceImpl implements IEventService{
         event1.setStartDate(event.getStartDate());
         event1.setEndDate(event.getEndDate());
         event1.setCapacityMax(event.getCapacityMax());
+        event1.setPrice(event.getPrice());
 
         return eventRepository.save(event1);
     }

@@ -1,6 +1,7 @@
 package pidev.eventconnect.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -43,8 +44,12 @@ public class Event implements Serializable {
     @Min(value = 1, message = "Capacity must be at least 1")
     @Max(value = 10000, message = "Capacity must not exceed 10000")
     Long capacityMax;
-
+    Double price;
+    Integer nbParticipantsActuels;
     @OneToMany(mappedBy = "event" ,cascade = CascadeType.ALL)
     List<Reservation> reservations = new ArrayList<>();
+    @OneToMany (mappedBy = "event", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    List<FeedBack> feedBacks;
 
 }
