@@ -1,6 +1,7 @@
 package pidev.eventconnect.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -30,11 +31,10 @@ public class Event implements Serializable {
     @Size(min = 10, max = 500, message = "Description must be between 10 and 500 characters")
     String description;
     @NotNull(message = "Start date is required")
-    @FutureOrPresent(message = "Start date must be today or in the future")
+
     @JsonFormat(pattern = "yyyy-MM-dd")
     LocalDate startDate;
     @NotNull(message = "End date is required")
-    @Future(message = "End date must be in the future")
     @JsonFormat(pattern = "yyyy-MM-dd")
     LocalDate endDate;
     @NotBlank(message = "Place is required")
@@ -45,8 +45,9 @@ public class Event implements Serializable {
     @Max(value = 10000, message = "Capacity must not exceed 10000")
     Long capacityMax;
     Double price;
-    Integer nbParticipantsActuels;
+    Long nbParticipantsActuels = 0L;
     @OneToMany(mappedBy = "event" ,cascade = CascadeType.ALL)
+
     List<Reservation> reservations = new ArrayList<>();
     @OneToMany (mappedBy = "event", cascade = CascadeType.ALL)
     @JsonManagedReference

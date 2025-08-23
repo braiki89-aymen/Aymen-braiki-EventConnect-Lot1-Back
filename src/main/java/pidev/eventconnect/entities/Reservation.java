@@ -1,5 +1,6 @@
 package pidev.eventconnect.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,10 +19,14 @@ public class Reservation implements Serializable {
     String firstNameParticipant;
     String lastNameParticipant;
     String emailParticipant;
+    Integer nbPlace;
     @Enumerated(EnumType.STRING)
     Status status;
-
+    String cancelCode;
+    @Lob
+    String qrCodeBase64;
     @ManyToOne
+    @JsonIgnore
     Event event;
 
 }
