@@ -7,6 +7,7 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pidev.eventconnect.dto.CancelRequest;
 import pidev.eventconnect.entities.Event;
@@ -18,6 +19,7 @@ import pidev.eventconnect.repository.ReservationRepository;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -70,7 +72,7 @@ public class ReservationServiceImpl implements IReservationService{
             try {
                 generateQRCode(qrContent, qrPath);
                 reservation1.setQrCodeBase64(qrPath);
-                reservation1 = reservationRepository.save(reservation1); // mise à jour avec QR code
+                reservation1 = reservationRepository.save(reservation1);
             } catch (Exception e) {
                 throw new RuntimeException("Error generating QR Code", e);
             }
@@ -107,6 +109,51 @@ public class ReservationServiceImpl implements IReservationService{
     public boolean existsByEmailAndCancelCode(CancelRequest cancelRequest) {
        return reservationRepository.findByEmailParticipantAndCancelCode(cancelRequest.getEmailParticipant(),
                cancelRequest.getCancelCode()).isPresent();
+    }
+
+    @Override
+    @Scheduled(fixedDelay = 60000)
+    public void confirmedPendingReservation(){
+        List<Reservation> PendingReservations = reservationRepository.findPendingReservations();
+        if (PendingReservations == null) {
+            throw new EntityNotFoundException("Pending List empty ");
+
+        }
+        for (Reservation re : PendingReservations){
+           Event event = re.getEvent();
+           if(event.getNbParticipantsActuels() < event.getCapacityMax()){
+               re.setStatus(Status.CONFIRMED);
+               re.setCancelCode(UUID.randomUUID().toString());
+               event.setNbParticipantsActuels(event.getNbParticipantsActuels() + 1);
+               reservationRepository.save(re);
+               eventRepository.save(event);
+               String qrContent = "Reservation ID: " + re.getId() +
+                       "\nName: " + re.getFirstNameParticipant() + " " + re.getLastNameParticipant() +
+                       "\nEvent: " + re.getEvent().getTitle() +
+                       "\nCancel Code: " + re.getCancelCode();
+               String qrPath = "qrcodes/reservation-" + re.getId() + ".png";
+               try {
+                   generateQRCode(qrContent, qrPath);
+                   re.setQrCodeBase64(qrPath);
+                   re = reservationRepository.save(re);
+               } catch (Exception e) {
+                   throw new RuntimeException("Error generating QR Code", e);
+               }
+               emailService.sendConfirmationEmail(re);
+
+           }
+        }
+
+    }
+
+    @Override
+    public List<Reservation> listConfirmedReservation(Long id) {
+        return reservationRepository.findConfirmedReservations(id);
+    }
+
+    @Override
+    public List<Reservation> listPendingReservation(Long id) {
+        return reservationRepository.findPendingReservations1(id);
     }
 
     private void generateQRCode(String text, String filePath) throws WriterException, IOException {

@@ -9,6 +9,7 @@ import pidev.eventconnect.dto.CancelRequest;
 import pidev.eventconnect.entities.Reservation;
 import pidev.eventconnect.services.ReservationServiceImpl;
 
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 @RestController
@@ -44,6 +45,16 @@ public class ReservationRestController {
         boolean exists = reservationService.existsByEmailAndCancelCode(request);
 
         return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/confirmed/{id}")
+    public List<Reservation> listConfirmedReservation (@PathVariable("id") Long id){
+         return reservationService.listConfirmedReservation(id);
+    }
+
+    @GetMapping("/pending/{id}")
+    public List<Reservation> listPendingReservation (@PathVariable ("id")Long id){
+         return reservationService.listPendingReservation(id);
     }
 
 }
