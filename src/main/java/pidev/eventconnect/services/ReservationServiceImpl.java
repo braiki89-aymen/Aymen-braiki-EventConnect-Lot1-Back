@@ -112,7 +112,7 @@ public class ReservationServiceImpl implements IReservationService{
     }
 
     @Override
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 300000)
     public void confirmedPendingReservation(){
         List<Reservation> PendingReservations = reservationRepository.findPendingReservations();
         if (PendingReservations == null) {
@@ -154,6 +154,28 @@ public class ReservationServiceImpl implements IReservationService{
     @Override
     public List<Reservation> listPendingReservation(Long id) {
         return reservationRepository.findPendingReservations1(id);
+    }
+
+    @Override
+    public int countConfirmedReservationsByEventId(Long id) {
+        return reservationRepository.countConfirmedReservationsByEventId(id);
+
+    }
+
+    @Override
+    public int countPendingReservationsByEventId(Long id) {
+        return  reservationRepository.countPendingReservationsByEventId(id);
+
+    }
+
+    @Override
+    public List<Object[]> findTopParticipants() {
+        return reservationRepository.findTopParticipants();
+    }
+
+    @Override
+    public List<Object[]> countReservationsByAllEvents() {
+        return reservationRepository.countReservationsByAllEvents();
     }
 
     private void generateQRCode(String text, String filePath) throws WriterException, IOException {

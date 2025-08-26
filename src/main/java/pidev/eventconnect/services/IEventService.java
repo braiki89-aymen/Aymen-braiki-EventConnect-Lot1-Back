@@ -12,4 +12,5 @@ public interface IEventService {
     public void removeEvent (Long  id);
     public  Event updateEvent (Long id , Event event);
     public Event retrieveEvent (Long id);
+    public int countAllEvent ();
 }

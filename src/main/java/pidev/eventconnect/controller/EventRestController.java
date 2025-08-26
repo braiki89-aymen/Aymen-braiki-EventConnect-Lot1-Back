@@ -70,4 +70,9 @@ public class EventRestController {
 
         }
     }
+    @GetMapping("/countAllEvents")
+    public int countAllEvents (){
+        return eventService.countAllEvent();
+
+    }
 }

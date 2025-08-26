@@ -109,5 +109,10 @@ public class EventServiceImpl implements IEventService{
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "event not found"));
     }
 
+    @Override
+    public int countAllEvent() {
+        return eventRepository.countAllEvent();
+    }
+
 
 }

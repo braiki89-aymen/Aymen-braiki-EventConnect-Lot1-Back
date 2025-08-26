@@ -16,4 +16,7 @@ public interface EventRepository extends JpaRepository<Event,Long> {
     List<Event> findConflictingEvents(@Param("startDate") LocalDate startDate,
                                       @Param("endDate") LocalDate endDate,
                                       @Param("place") String place);
+
+    @Query("SELECT count(e) FROM Event e ")
+    int countAllEvent ();
 }

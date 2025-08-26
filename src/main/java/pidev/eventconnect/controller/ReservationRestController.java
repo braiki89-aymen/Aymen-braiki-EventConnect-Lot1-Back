@@ -57,4 +57,24 @@ public class ReservationRestController {
          return reservationService.listPendingReservation(id);
     }
 
+    @GetMapping("/countConfirmed/{id}")
+    public int countConfirmedReservation (@PathVariable("id") Long id){
+         return reservationService.countConfirmedReservationsByEventId(id);
+    }
+    @GetMapping("/countPending/{id}")
+    public int countPendingReservation (@PathVariable("id") Long id){
+         return reservationService.countPendingReservationsByEventId(id);
+    }
+
+    @GetMapping("/topParticipant")
+    public List<Object[]> findTopParticipants (){
+        return  reservationService.findTopParticipants();
+
+    }
+
+    @GetMapping("/countAllReservation")
+    public List<Object[]> countReservationsByAllEvents () {
+         return reservationService.countReservationsByAllEvents();
+    }
+
 }

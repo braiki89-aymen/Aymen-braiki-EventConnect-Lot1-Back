@@ -16,4 +16,9 @@ public interface IReservationService {
 
     public List<Reservation> listConfirmedReservation (Long id);
     public List<Reservation> listPendingReservation(Long id);
+
+    public int countConfirmedReservationsByEventId(Long id);
+    public int countPendingReservationsByEventId(Long id);
+    public List<Object[]> findTopParticipants();
+    public List<Object[]> countReservationsByAllEvents();
 }

@@ -23,6 +23,18 @@ public interface ReservationRepository extends JpaRepository<Reservation,Long> {
     @Query("SELECT r FROM Reservation r WHERE r.status = 'PENDING'")
     List<Reservation> findPendingReservations();
 
+    @Query("SELECT COUNT(r) FROM Reservation r WHERE r.event.id = :id AND r.status = 'CONFIRMED'")
+    int countConfirmedReservationsByEventId(@Param("id") Long id);
+
+    @Query("SELECT COUNT(r) FROM Reservation r WHERE r.event.id = :id AND r.status = 'PENDING' ")
+    int countPendingReservationsByEventId(@Param("id") Long id);
+
+    @Query("SELECT r.emailParticipant,r.firstNameParticipant,r.lastNameParticipant, COUNT(r) as total FROM Reservation r GROUP BY r.emailParticipant ORDER BY total DESC")
+    List<Object[]> findTopParticipants();
+
+    @Query("SELECT r.event.title, COUNT(r) as total FROM Reservation r GROUP BY r.event.id")
+    List<Object[]> countReservationsByAllEvents();
+
 
 
 }
