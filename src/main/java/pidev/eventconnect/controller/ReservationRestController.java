@@ -2,10 +2,12 @@ package pidev.eventconnect.controller;
 
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pidev.eventconnect.dto.CancelRequest;
+import pidev.eventconnect.entities.DiscountCode;
 import pidev.eventconnect.entities.Reservation;
 import pidev.eventconnect.services.ReservationServiceImpl;
 
@@ -23,13 +25,14 @@ public class ReservationRestController {
 
      @PostMapping("/addReservation/{id}")
     public ResponseEntity<?> addReservation(@RequestBody Reservation reservation,
+                                            @RequestParam(value = "code", required = false) String code,
                                             @PathVariable ("id")Long id){
         try {
-            Reservation reservation1 = reservationService.createReservation(reservation,id);
+            Reservation reservation1 = reservationService.createReservation(reservation,id,code);
             return ResponseEntity.ok(reservation1);
         } catch (Exception e) {
             e.printStackTrace();
-            // renvoyer le message de l'exception dans le body
+
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);

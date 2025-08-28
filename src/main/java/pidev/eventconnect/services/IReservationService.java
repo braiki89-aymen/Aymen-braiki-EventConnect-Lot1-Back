@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface IReservationService {
 
-    public Reservation createReservation (Reservation reservation, Long id);
+    public Reservation createReservation (Reservation reservation, Long id, String discountCode);
     public void cancelReservation (CancelRequest cancelRequest);
 
     public boolean existsByEmailAndCancelCode(CancelRequest cancelRequest);

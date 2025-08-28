@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import pidev.eventconnect.entities.Event;
 import pidev.eventconnect.services.EventServiceImpl;
 
@@ -23,18 +24,23 @@ public class EventRestController {
     @Autowired
     EventServiceImpl eventService;
     @PostMapping("/addEvent")
-    public ResponseEntity<?> addEvent(@RequestBody  Event event){
+    public ResponseEntity<?> addEvent(@RequestBody Event event) {
         try {
             Event saved = eventService.addEvent(event);
             return ResponseEntity.ok(saved);
+        } catch (ResponseStatusException e) {
+
+            Map<String, String> body = new HashMap<>();
+            body.put("message", e.getReason());
+            return ResponseEntity.status(e.getStatusCode()).body(body);
         } catch (Exception e) {
             e.printStackTrace();
-            // renvoyer le message de l'exception dans le body
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
 
 
 

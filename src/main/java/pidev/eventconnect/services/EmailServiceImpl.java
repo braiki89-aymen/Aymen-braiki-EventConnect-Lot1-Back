@@ -89,4 +89,74 @@ public class EmailServiceImpl implements IEmailService{
             throw new RuntimeException("Failed to send waiting email", e);
         }
     }
+
+    @Override
+    public void sendDiscountCodeEmail(String emailParticipant, String firstNameParticipant, String lastNameParticipant,
+                                      String discountCode) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            // Destinataire et sujet
+            helper.setTo(emailParticipant);
+            helper.setSubject("🎁 Your Discount Code :)" );
+            helper.setFrom("braikiaymen89@gmail.com");
+
+            // Contenu HTML
+            String htmlContent =
+                    "<div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa;'>" +
+                            "<h2 style='color: #007bff;'>Hello " + firstNameParticipant + " " + lastNameParticipant + "!</h2>" +
+                            "<p>We are happy to offer you a discount </p>" +
+
+                            "<p>Your discount code is:</p>" +
+                            "<h3 style='color: #28a745;'>" + discountCode + "</h3>" +
+                            "<p>Use this code during your reservation to enjoy your discount.</p>" +
+                            "<p style='font-size: 14px; color: #666;'>This code is valid for a just one Event.</p>" +
+                            "</div>";
+
+            helper.setText(htmlContent, true);
+
+            // Envoi
+            mailSender.send(message);
+
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send discount code email", e);
+        }
+    }
+
+    @Override
+    public void sendFreeAccessEmail(String emailParticipant, String firstNameParticipant, String lastNameParticipant, String qrCodePath) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(emailParticipant);
+            helper.setSubject("🎉 Free Access Granted!");
+            helper.setFrom("braikiaymen89@gmail.com");
+
+            String htmlContent =
+                    "<div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa;'>" +
+                            "<h2 style='color: #007bff;'>Hello " + firstNameParticipant + " " + lastNameParticipant + "!</h2>" +
+                            "<p>We are excited to offer you <strong>Free Access</strong> to our upcoming event!</p>" +
+                            "<p>Please present this QR code at the entrance to claim your access:</p>" +
+                            "<div style='text-align: center; margin: 20px 0;'>" +
+                            "   <img src='cid:qrCodeImage' alt='QR Code'/>" +
+                            "</div>" +
+                            "<p style='font-size: 14px; color: #666;'>This free access is valid for one event only.</p>" +
+                            "</div>";
+
+            helper.setText(htmlContent, true);
+
+            FileSystemResource qrImage = new FileSystemResource(new File(qrCodePath));
+            helper.addInline("qrCodeImage", qrImage);
+
+            mailSender.send(message);
+
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send Free Access email", e);
+        }
+    }
+
+
+
 }

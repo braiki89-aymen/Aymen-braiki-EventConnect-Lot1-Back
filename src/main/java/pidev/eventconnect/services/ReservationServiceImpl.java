@@ -10,9 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pidev.eventconnect.dto.CancelRequest;
+import pidev.eventconnect.entities.DiscountCode;
 import pidev.eventconnect.entities.Event;
 import pidev.eventconnect.entities.Reservation;
 import pidev.eventconnect.entities.Status;
+import pidev.eventconnect.repository.DiscountCodeRepository;
 import pidev.eventconnect.repository.EventRepository;
 import pidev.eventconnect.repository.ReservationRepository;
 
@@ -31,12 +33,13 @@ public class ReservationServiceImpl implements IReservationService{
     ReservationRepository reservationRepository;
     @Autowired
     EmailServiceImpl emailService;
+    @Autowired
+    DiscountCodeRepository discountCodeRepository;
     @Override
-    public Reservation createReservation(Reservation reservation, Long id) {
+    public Reservation createReservation(Reservation reservation, Long id, String discountCode) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ID: " + id));
 
-        // Initialiser la réservation
         Reservation reservation1 = new Reservation();
         reservation1.setEmailParticipant(reservation.getEmailParticipant());
         reservation1.setFirstNameParticipant(reservation.getFirstNameParticipant());
@@ -44,23 +47,36 @@ public class ReservationServiceImpl implements IReservationService{
         reservation1.setNbPlace(reservation.getNbPlace());
         reservation1.setEvent(event);
 
-        // Vérifier la capacité et définir le statut
-        if (event.getNbParticipantsActuels() == null) {
-            event.setNbParticipantsActuels(0L); // sécurité null
-        }
 
-        if (event.getNbParticipantsActuels() < event.getCapacityMax()) {
+        if (event.getNbParticipantsActuels() == null) {
+            event.setNbParticipantsActuels(0L);
+        }
+        Long nbDisponible = event.getCapacityMax() - event.getNbParticipantsActuels();
+
+        if (event.getNbParticipantsActuels() < event.getCapacityMax()
+                && reservation1.getNbPlace() <= nbDisponible) {
             reservation1.setStatus(Status.CONFIRMED);
             reservation1.setCancelCode(UUID.randomUUID().toString());
-            event.setNbParticipantsActuels(event.getNbParticipantsActuels() + 1);
+            event.setNbParticipantsActuels(event.getNbParticipantsActuels() + reservation1.getNbPlace());
         } else {
             reservation1.setStatus(Status.PENDING);
         }
 
-        // Sauvegarder d'abord pour avoir un ID
+        double amountPay = reservation1.getNbPlace() * event.getPrice();
+
+        if(discountCode != null && !discountCode.isEmpty()){
+            DiscountCode code = discountCodeRepository.findByCode(discountCode)
+                    .orElseThrow(() -> new RuntimeException("Invalid discount code"));
+            double reduction = amountPay * 0.2 ;
+            amountPay =  amountPay - reduction;
+            discountCodeRepository.delete(code);
+
+        }
+
+        reservation1.setAmount(amountPay);
+
         reservation1 = reservationRepository.save(reservation1);
 
-        // Générer le QR code seulement si confirmé
         if (reservation1.getStatus() == Status.CONFIRMED) {
             String qrContent = "Reservation ID: " + reservation1.getId() +
                     "\nName: " + reservation1.getFirstNameParticipant() + " " + reservation1.getLastNameParticipant() +
@@ -77,10 +93,10 @@ public class ReservationServiceImpl implements IReservationService{
                 throw new RuntimeException("Error generating QR Code", e);
             }
 
-            // Envoi du mail après génération du QR code
+
             emailService.sendConfirmationEmail(reservation1);
         } else {
-            // Email pour liste d'attente
+
             emailService.sendWaitingEmail(reservation1);
         }
 
@@ -99,7 +115,7 @@ public class ReservationServiceImpl implements IReservationService{
         Long id = reservation.getEvent().getId();
         Event event = eventRepository.findById(id).
                 orElseThrow(() -> new EntityNotFoundException("Event not found with ID: " + id));
-        event.setNbParticipantsActuels(event.getNbParticipantsActuels() - 1);
+        event.setNbParticipantsActuels(event.getNbParticipantsActuels() - reservation.getNbPlace());
         eventRepository.save(event);
 
         reservationRepository.delete(reservation);
@@ -115,16 +131,15 @@ public class ReservationServiceImpl implements IReservationService{
     @Scheduled(fixedDelay = 300000)
     public void confirmedPendingReservation(){
         List<Reservation> PendingReservations = reservationRepository.findPendingReservations();
-        if (PendingReservations == null) {
-            throw new EntityNotFoundException("Pending List empty ");
 
-        }
         for (Reservation re : PendingReservations){
            Event event = re.getEvent();
-           if(event.getNbParticipantsActuels() < event.getCapacityMax()){
+            Long nbDisponible = event.getCapacityMax() - event.getNbParticipantsActuels();
+           if(event.getNbParticipantsActuels() < event.getCapacityMax()
+                   && re.getNbPlace() <= nbDisponible){
                re.setStatus(Status.CONFIRMED);
                re.setCancelCode(UUID.randomUUID().toString());
-               event.setNbParticipantsActuels(event.getNbParticipantsActuels() + 1);
+               event.setNbParticipantsActuels(event.getNbParticipantsActuels() + re.getNbPlace());
                reservationRepository.save(re);
                eventRepository.save(event);
                String qrContent = "Reservation ID: " + re.getId() +
@@ -178,7 +193,7 @@ public class ReservationServiceImpl implements IReservationService{
         return reservationRepository.countReservationsByAllEvents();
     }
 
-    private void generateQRCode(String text, String filePath) throws WriterException, IOException {
+    public void generateQRCode(String text, String filePath) throws WriterException, IOException {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         var bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 250, 250);
 

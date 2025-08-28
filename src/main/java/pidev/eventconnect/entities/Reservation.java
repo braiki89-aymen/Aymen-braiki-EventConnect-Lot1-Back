@@ -6,6 +6,8 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @Setter
@@ -25,6 +27,7 @@ public class Reservation implements Serializable {
     String cancelCode;
     @Lob
     String qrCodeBase64;
+    double amount;
     @ManyToOne
     @JsonIgnore
     Event event;
