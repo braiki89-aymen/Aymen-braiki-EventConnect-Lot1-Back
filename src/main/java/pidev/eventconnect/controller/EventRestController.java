@@ -1,5 +1,6 @@
 package pidev.eventconnect.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import pidev.eventconnect.entities.Event;
 import pidev.eventconnect.services.EventServiceImpl;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -81,4 +83,12 @@ public class EventRestController {
         return eventService.countAllEvent();
 
     }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    public void exportEvents(HttpServletResponse response) throws IOException {
+        eventService.exportEvents(response);
+
+    }
+
+
 }
