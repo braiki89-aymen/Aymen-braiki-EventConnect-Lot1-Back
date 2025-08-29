@@ -54,7 +54,7 @@ public class EmailServiceImpl implements IEmailService{
 
             helper.setText(htmlContent, true);
 
-            // Attacher le QR code (généré précédemment et stocké sur disque)
+
             FileSystemResource qrImage = new FileSystemResource(new File(reservation.getQrCodeBase64()));
             helper.addInline("qrCodeImage", qrImage);
 
@@ -97,12 +97,12 @@ public class EmailServiceImpl implements IEmailService{
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            // Destinataire et sujet
+
             helper.setTo(emailParticipant);
             helper.setSubject("🎁 Your Discount Code :)" );
             helper.setFrom("braikiaymen89@gmail.com");
 
-            // Contenu HTML
+
             String htmlContent =
                     "<div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa;'>" +
                             "<h2 style='color: #007bff;'>Hello " + firstNameParticipant + " " + lastNameParticipant + "!</h2>" +

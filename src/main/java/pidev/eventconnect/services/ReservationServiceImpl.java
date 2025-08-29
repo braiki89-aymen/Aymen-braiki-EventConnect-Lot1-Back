@@ -5,6 +5,7 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,6 +37,7 @@ public class ReservationServiceImpl implements IReservationService{
     @Autowired
     DiscountCodeRepository discountCodeRepository;
     @Override
+
     public Reservation createReservation(Reservation reservation, Long id, String discountCode) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ID: " + id));
@@ -191,6 +193,16 @@ public class ReservationServiceImpl implements IReservationService{
     @Override
     public List<Object[]> countReservationsByAllEvents() {
         return reservationRepository.countReservationsByAllEvents();
+    }
+
+    @Override
+    public double incomeEvent(Long id) {
+        return reservationRepository.incomeByEvent(id);
+    }
+
+    @Override
+    public double totalIncome() {
+        return reservationRepository.totalIncome();
     }
 
     public void generateQRCode(String text, String filePath) throws WriterException, IOException {

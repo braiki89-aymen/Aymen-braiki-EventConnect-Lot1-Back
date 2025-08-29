@@ -35,6 +35,14 @@ public interface ReservationRepository extends JpaRepository<Reservation,Long> {
     @Query("SELECT r.event.title, COUNT(r) as total FROM Reservation r GROUP BY r.event.id")
     List<Object[]> countReservationsByAllEvents();
 
+    @Query("select sum(r.amount) from Reservation r where r.event.id = :id")
+    public double incomeByEvent(@Param("id") Long id);
+
+    @Query("select sum(r.amount) from Reservation r ")
+     public double totalIncome ();
+
+
+
 
 
 }

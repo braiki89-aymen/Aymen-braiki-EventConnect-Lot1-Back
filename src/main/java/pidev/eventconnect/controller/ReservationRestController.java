@@ -77,7 +77,17 @@ public class ReservationRestController {
 
     @GetMapping("/countAllReservation")
     public List<Object[]> countReservationsByAllEvents () {
+
          return reservationService.countReservationsByAllEvents();
+    }
+
+    @GetMapping("/incomeEvent/{id}")
+    public double incomeEvent (@PathVariable("id") Long  id){
+         return reservationService.incomeEvent(id);
+    }
+    @GetMapping("/totalIncome")
+    public double totalIncome (){
+         return reservationService.totalIncome();
     }
 
 }

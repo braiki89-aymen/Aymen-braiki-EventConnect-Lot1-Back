@@ -7,18 +7,20 @@ import java.util.List;
 
 public interface IReservationService {
 
-    public Reservation createReservation (Reservation reservation, Long id, String discountCode);
-    public void cancelReservation (CancelRequest cancelRequest);
+     Reservation createReservation (Reservation reservation, Long id, String discountCode);
+     void cancelReservation (CancelRequest cancelRequest);
 
-    public boolean existsByEmailAndCancelCode(CancelRequest cancelRequest);
+     boolean existsByEmailAndCancelCode(CancelRequest cancelRequest);
 
-    public void confirmedPendingReservation();
+     void confirmedPendingReservation();
 
-    public List<Reservation> listConfirmedReservation (Long id);
-    public List<Reservation> listPendingReservation(Long id);
+     List<Reservation> listConfirmedReservation (Long id);
+     List<Reservation> listPendingReservation(Long id);
 
-    public int countConfirmedReservationsByEventId(Long id);
-    public int countPendingReservationsByEventId(Long id);
-    public List<Object[]> findTopParticipants();
-    public List<Object[]> countReservationsByAllEvents();
+     int countConfirmedReservationsByEventId(Long id);
+     int countPendingReservationsByEventId(Long id);
+     List<Object[]> findTopParticipants();
+     List<Object[]> countReservationsByAllEvents();
+     double incomeEvent (Long id);
+     double totalIncome ();
 }
