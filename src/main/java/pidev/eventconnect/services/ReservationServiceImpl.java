@@ -5,6 +5,7 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,7 @@ public class ReservationServiceImpl implements IReservationService{
     DiscountCodeRepository discountCodeRepository;
     @Override
 
+    @Transactional
     public Reservation createReservation(Reservation reservation, Long id, String discountCode) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ID: " + id));
@@ -49,10 +51,10 @@ public class ReservationServiceImpl implements IReservationService{
         reservation1.setNbPlace(reservation.getNbPlace());
         reservation1.setEvent(event);
 
-
         if (event.getNbParticipantsActuels() == null) {
             event.setNbParticipantsActuels(0L);
         }
+
         Long nbDisponible = event.getCapacityMax() - event.getNbParticipantsActuels();
 
         if (event.getNbParticipantsActuels() < event.getCapacityMax()
@@ -66,43 +68,22 @@ public class ReservationServiceImpl implements IReservationService{
 
         double amountPay = reservation1.getNbPlace() * event.getPrice();
 
-        if(discountCode != null && !discountCode.isEmpty()){
+        if (discountCode != null && !discountCode.isEmpty()) {
             DiscountCode code = discountCodeRepository.findByCode(discountCode)
                     .orElseThrow(() -> new RuntimeException("Invalid discount code"));
-            double reduction = amountPay * 0.2 ;
-            amountPay =  amountPay - reduction;
+            amountPay = amountPay - (amountPay * 0.2);
             discountCodeRepository.delete(code);
-
         }
 
         reservation1.setAmount(amountPay);
 
+
         reservation1 = reservationRepository.save(reservation1);
 
-        if (reservation1.getStatus() == Status.CONFIRMED) {
-            String qrContent = "Reservation ID: " + reservation1.getId() +
-                    "\nName: " + reservation1.getFirstNameParticipant() + " " + reservation1.getLastNameParticipant() +
-                    "\nEvent: " + reservation1.getEvent().getTitle() +
-                    "\nCancel Code: " + reservation1.getCancelCode();
 
-            String qrPath = "qrcodes/reservation-" + reservation1.getId() + ".png";
-
-            try {
-                generateQRCode(qrContent, qrPath);
-                reservation1.setQrCodeBase64(qrPath);
-                reservation1 = reservationRepository.save(reservation1);
-            } catch (Exception e) {
-                throw new RuntimeException("Error generating QR Code", e);
-            }
-
-
-            emailService.sendConfirmationEmail(reservation1);
-        } else {
-
-            emailService.sendWaitingEmail(reservation1);
-        }
-
+        processAfterReservation(reservation1);
         return reservation1;
+
     }
 
     @Override
@@ -130,7 +111,7 @@ public class ReservationServiceImpl implements IReservationService{
     }
 
     @Override
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelay = 30000)
     public void confirmedPendingReservation(){
         List<Reservation> PendingReservations = reservationRepository.findPendingReservations();
 
@@ -217,5 +198,35 @@ public class ReservationServiceImpl implements IReservationService{
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", fos);
         }
     }
+
+    @Async
+    public void processAfterReservation(Reservation reservation) {
+        try {
+            if (reservation.getStatus() == Status.CONFIRMED) {
+
+                String qrContent = "Reservation ID: " + reservation.getId() +
+                        "\nName: " + reservation.getFirstNameParticipant() + " " + reservation.getLastNameParticipant() +
+                        "\nEvent: " + reservation.getEvent().getTitle() +
+                        "\nCancel Code: " + reservation.getCancelCode();
+
+                String qrPath = "qrcodes/reservation-" + reservation.getId() + ".png";
+                generateQRCode(qrContent, qrPath);
+
+                reservation.setQrCodeBase64(qrPath);
+                reservationRepository.save(reservation);
+
+
+                emailService.sendConfirmationEmail(reservation);
+
+            } else {
+
+                emailService.sendWaitingEmail(reservation);
+            }
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+    }
+
 
 }
