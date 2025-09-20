@@ -1,11 +1,7 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven3'   // défini dans Jenkins (Manage Jenkins > Global Tool Configuration)
-        jdk 'Java17'     // défini dans Jenkins (par ex. Java 17)
-    }
-
+   
     stages {
         stage('Récupération du code source') {
             steps {
