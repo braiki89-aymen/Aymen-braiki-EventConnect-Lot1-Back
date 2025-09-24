@@ -25,4 +25,5 @@ public class CheckoutRestController {
                 .status(HttpStatus.OK)
                 .body(stripeResponse);
     }
+    //for stripe
 }
