@@ -14,8 +14,9 @@ pipeline {
             }
         }
 
-        stage('Construction du livrable') {
+       stage('Build Maven') {
             steps {
+                echo "📦 Build Maven"
                 sh 'mvn clean package -DskipTests'
             }
         }
