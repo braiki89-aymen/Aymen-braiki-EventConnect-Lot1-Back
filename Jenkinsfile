@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds') // ID des credentials Jenkins
-        DOCKER_IMAGE = "braiki89/EventConnect" // Nom de l'image et repo Docker Hub
+        DOCKER_IMAGE = "braiki89/eventconnect" // Nom de l'image et repo Docker Hub
         DOCKER_TAG = "latest"
     }
 
