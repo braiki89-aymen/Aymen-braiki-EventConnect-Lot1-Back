@@ -53,8 +53,7 @@ public class StripeService {
         } catch (StripeException e) {
             
         }
-       //jenkins file
-       //test jenkinsfile
+       
         return StripeResponse
                 .builder()
                 .status("SUCCESS")
