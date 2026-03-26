@@ -61,4 +61,22 @@ public class CommentServiceImpl implements CommentService {
     public void deleteComment(Long id) {
         commentRepository.deleteById(id);
     }
+
+    @Override
+    public String simulatePullRequestReview(String title, String body) {
+    if (title == null || title.isBlank()) {
+        return "PR invalide : titre manquant";
+    }
+
+    if (body == null || body.isBlank()) {
+        return "PR invalide : description manquante";
+    }
+
+    if (containsBadWords(title) || containsBadWords(body)) {
+        return "PR rejetée : contenu inapproprié";
+    }
+
+    return "PR valide : prête pour review";
 }
+}
+
