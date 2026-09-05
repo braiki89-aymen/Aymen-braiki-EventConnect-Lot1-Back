@@ -91,4 +91,39 @@ public class EmailServiceImpl implements IEmailService{
         sendEmail(player.getEmail(), subject, body);
     }
 
+    
+public String processUserRegistration(String username, String email, String password) {
+
+    if (username == null || username.isEmpty()) {
+        return "Username is required";
+    }
+
+    if (email == null || email.isEmpty()) {
+        return "Email is required";
+    }
+
+    if (password == null || password.length() < 6) {
+        return "Password too short";
+    }
+
+    String query = "SELECT * FROM users WHERE username = '" + username + "'";
+
+    try {
+        // Simulate database query
+        System.out.println("Executing query: " + query);
+
+        if (username.equals("admin")) {
+            System.out.println("Admin user detected");
+        }
+
+        return "User registered successfully";
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return "Registration failed";
+    }
+}
+
+
+
 }
