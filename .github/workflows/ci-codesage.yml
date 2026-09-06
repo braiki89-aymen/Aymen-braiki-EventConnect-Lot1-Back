@@ -3,7 +3,7 @@ name: CI/CD with CodeSage Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [main, develop]
+    branches: [main, developer]
     
 
 jobs:
