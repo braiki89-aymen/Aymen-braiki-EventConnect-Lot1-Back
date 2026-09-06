@@ -4,9 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main, develop]
+    branches: [main, develop]
 
 jobs:
 
+  # ── 1. CodeSage Review ──────────────────────────────────────────
   # ── 1. CodeSage Review ──────────────────────────────────────────
   codesage-review:
     name: 🤖 CodeSage Code Review
@@ -20,10 +22,17 @@ jobs:
         id: review
         run: |
           echo "🤖 Sending PR to CodeSage..."
+          echo "🤖 Sending PR to CodeSage..."
 
           RESPONSE=$(curl -s -X POST \
             "${{ secrets.CODESAGE_URL }}/api/ide/review" \
+          RESPONSE=$(curl -s -X POST \
+            "${{ secrets.CODESAGE_URL }}/api/ide/review" \
             -H "Content-Type: application/json" \
+            -d '{
+              "pr_url": "${{ github.event.pull_request.html_url }}",
+              "command": "/review"
+            }' \
             -d '{
               "pr_url": "${{ github.event.pull_request.html_url }}",
               "command": "/review"
@@ -43,14 +52,32 @@ jobs:
           except:
               print('0')
           ")
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
 
+          # Extrait le score
+          SCORE=$(echo "$RESPONSE" | python3 -c "
+          import sys, json, re
+          try:
+              data = json.loads(sys.stdin.read())
+              result = data.get('result', '')
+              match = re.search(r'Score.*?(\d+)/100', result)
+              print(match.group(1) if match else '0')
+          except:
+              print('0')
+          ")
+
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
           echo "score=$SCORE" >> $GITHUB_OUTPUT
           echo "📊 CodeSage Score: $SCORE/100"
 
       - name: Post Review Comment on PR
+      - name: Post Review Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
+            const response = JSON.parse(`${{ steps.review.outputs.response }}`);
+            const result   = response.result || '❌ No result from CodeSage';
+            const score    = ${{ steps.review.outputs.score }};
             const response = JSON.parse(`${{ steps.review.outputs.response }}`);
             const result   = response.result || '❌ No result from CodeSage';
             const score    = ${{ steps.review.outputs.score }};
@@ -60,11 +87,19 @@ jobs:
               owner:        context.repo.owner,
               repo:         context.repo.repo,
               body:         result,
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              body:         result,
             });
 
       - name: Check Score Threshold
+      - name: Check Score Threshold
         run: |
           SCORE=${{ steps.review.outputs.score }}
+          echo "📊 Final Score: $SCORE/100"
+
+          if [ "$SCORE" -lt "60" ]; then
+            echo "❌ Score too low: $SCORE/100 (minimum: 60)"
           echo "📊 Final Score: $SCORE/100"
 
           if [ "$SCORE" -lt "60" ]; then
@@ -75,9 +110,14 @@ jobs:
           echo "✅ Score accepted: $SCORE/100"
 
   # ── 2. Build Maven ──────────────────────────────────────────────
+          echo "✅ Score accepted: $SCORE/100"
+
+  # ── 2. Build Maven ──────────────────────────────────────────────
   build:
     name: 📦 Build Maven
+    name: 📦 Build Maven
     runs-on: ubuntu-latest
+    needs: codesage-review   # attend que la review soit OK
     needs: codesage-review   # attend que la review soit OK
 
     steps:
@@ -92,6 +132,8 @@ jobs:
 
       - name: Build with Maven
         run: mvn clean package -DskipTests
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
@@ -100,9 +142,12 @@ jobs:
           path: target/*.jar
 
   # ── 3. Docker Build & Push ──────────────────────────────────────
+
+  # ── 3. Docker Build & Push ──────────────────────────────────────
   docker:
     name: 🐳 Docker Build & Push
     runs-on: ubuntu-latest
+    needs: build   # attend que le build soit OK
     needs: build   # attend que le build soit OK
 
     steps:
@@ -122,6 +167,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
+        run: docker build -t braiki89/eventconnect:latest .
         run: docker build -t braiki89/eventconnect:latest .
 
       - name: Push Docker image
