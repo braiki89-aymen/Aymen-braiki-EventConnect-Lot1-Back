@@ -1,86 +1,213 @@
+
 name: CI/CD with CodeSage Review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
 
-  # ── 1. CodeSage Review ──────────────────────────────────────────
+  # ==============================================================
+  # 1. CODESAGE REVIEW
+  # ==============================================================
+
   codesage-review:
     name: 🤖 CodeSage Code Review
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run CodeSage Review
         id: review
+        env:
+          CODESAGE_URL: ${{ secrets.CODESAGE_URL }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          echo "🤖 Sending PR to CodeSage..."
 
-          RESPONSE=$(curl -s -X POST \
-            "${{ secrets.CODESAGE_URL }}/api/ide/review" \
+          echo "========================================"
+          echo "🤖 CodeSage AI Code Review"
+          echo "========================================"
+
+          echo "PR: $PR_URL"
+          echo "CodeSage: $CODESAGE_URL"
+
+          # Appel CodeSage
+          RESPONSE=$(curl -sS -X POST \
+            "$CODESAGE_URL/api/ide/review" \
             -H "Content-Type: application/json" \
-            -d '{
-              "pr_url": "${{ github.event.pull_request.html_url }}",
-              "command": "/review"
-            }' \
+            -d "$(python3 - <<PY
+import json
+print(json.dumps({
+    "pr_url": "$PR_URL",
+    "command": "/review"
+}))
+PY
+)" \
             --max-time 900)
 
-          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "----------------------------------------"
+          echo "CodeSage response:"
+          echo "$RESPONSE"
+          echo "----------------------------------------"
 
-          # Extrait le score
-          SCORE=$(echo "$RESPONSE" | python3 -c "
-          import sys, json, re
-          try:
-              data = json.loads(sys.stdin.read())
-              result = data.get('result', '')
-              match = re.search(r'Score.*?(\d+)/100', result)
-              print(match.group(1) if match else '0')
-          except:
-              print('0')
-          ")
-
-          echo "score=$SCORE" >> $GITHUB_OUTPUT
-          echo "📊 CodeSage Score: $SCORE/100"
-
-      - name: Post Review Comment on PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const response = JSON.parse(`${{ steps.review.outputs.response }}`);
-            const result   = response.result || '❌ No result from CodeSage';
-            const score    = ${{ steps.review.outputs.score }};
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner:        context.repo.owner,
-              repo:         context.repo.repo,
-              body:         result,
-            });
-
-      - name: Check Score Threshold
-        run: |
-          SCORE=${{ steps.review.outputs.score }}
-          echo "📊 Final Score: $SCORE/100"
-
-          if [ "$SCORE" -lt "60" ]; then
-            echo "❌ Score too low: $SCORE/100 (minimum: 60)"
+          # Vérification réponse vide
+          if [ -z "$RESPONSE" ]; then
+            echo "❌ CodeSage returned an empty response"
             exit 1
           fi
 
-          echo "✅ Score accepted: $SCORE/100"
+          # Vérification JSON
+          if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
+            echo "❌ CodeSage returned invalid JSON"
+            exit 1
+          fi
 
-  # ── 2. Build Maven ──────────────────────────────────────────────
+          # Sauvegarder réponse dans fichier
+          echo "$RESPONSE" > codesage-response.json
+
+          # Extraire résultat
+          RESULT=$(echo "$RESPONSE" | jq -r '.result // empty')
+
+          if [ -z "$RESULT" ]; then
+            echo "❌ CodeSage did not return a review result"
+            exit 1
+          fi
+
+          # Extraire score
+          SCORE=$(echo "$RESULT" | \
+            grep -oE '[Ss]core[^0-9]*([0-9]{1,3})[[:space:]]*/[[:space:]]*100' | \
+            grep -oE '[0-9]{1,3}' | \
+            head -1)
+
+          # Si aucun score n'est trouvé
+          if [ -z "$SCORE" ]; then
+            echo "⚠️ No score detected from CodeSage"
+            SCORE=0
+          fi
+
+          # Vérification score valide
+          if ! [[ "$SCORE" =~ ^[0-9]+$ ]]; then
+            echo "❌ Invalid CodeSage score: $SCORE"
+            exit 1
+          fi
+
+          if [ "$SCORE" -gt 100 ]; then
+            echo "❌ Invalid score > 100"
+            exit 1
+          fi
+
+          echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+          echo "========================================"
+          echo "📊 CodeSage Score: $SCORE/100"
+          echo "========================================"
+
+
+      # ------------------------------------------------------------
+      # Publier le résultat dans la Pull Request
+      # ------------------------------------------------------------
+
+      - name: Post CodeSage Review on PR
+        uses: actions/github-script@v7
+        env:
+          CODESAGE_RESPONSE: ${{ steps.review.outputs.response }}
+          CODESAGE_SCORE: ${{ steps.review.outputs.score }}
+        with:
+          script: |
+
+            const fs = require('fs');
+
+            let response;
+
+            try {
+              response = JSON.parse(
+                fs.readFileSync('codesage-response.json', 'utf8')
+              );
+            } catch (error) {
+              console.log("Unable to read CodeSage response");
+              return;
+            }
+
+            const result =
+              response.result ||
+              "❌ CodeSage did not return a review.";
+
+            const score =
+              process.env.CODESAGE_SCORE || "N/A";
+
+            const body = `
+            ## 🤖 CodeSage AI Code Review
+
+            **Score:** ${score}/100
+
+            ---
+
+            ${result}
+
+            ---
+
+            _Generated automatically by CodeSage._
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+
+      # ------------------------------------------------------------
+      # Quality Gate
+      # ------------------------------------------------------------
+
+      - name: CodeSage Quality Gate
+        run: |
+
+          SCORE=${{ steps.review.outputs.score }}
+
+          echo "========================================"
+          echo "🔎 CodeSage Quality Gate"
+          echo "Score: $SCORE/100"
+          echo "Minimum: 60/100"
+          echo "========================================"
+
+          if [ "$SCORE" -lt 60 ]; then
+            echo ""
+            echo "❌ CodeSage Quality Gate FAILED"
+            echo "❌ Score: $SCORE/100"
+            echo "❌ Minimum required: 60/100"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ CodeSage Quality Gate PASSED"
+          echo "✅ Score: $SCORE/100"
+
+
+  # ==============================================================
+  # 2. BUILD + TEST
+  # ==============================================================
+
   build:
-    name: 📦 Build Maven
+    name: 📦 Build & Test
     runs-on: ubuntu-latest
-    needs: codesage-review   # attend que la review soit OK
+
+    needs:
+      - codesage-review
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -89,23 +216,33 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: maven
 
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
+      - name: Build and run tests
+        run: |
+          mvn clean verify
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-jar
           path: target/*.jar
+          if-no-files-found: error
 
-  # ── 3. Docker Build & Push ──────────────────────────────────────
+
+  # ==============================================================
+  # 3. DOCKER BUILD & PUSH
+  # ==============================================================
+
   docker:
     name: 🐳 Docker Build & Push
     runs-on: ubuntu-latest
-    needs: build   # attend que le build soit OK
+
+    needs:
+      - build
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -121,8 +258,24 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Set Docker image tag
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
       - name: Build Docker image
-        run: docker build -t braiki89/eventconnect:latest .
+        run: |
+          docker build \
+            -t braiki89/eventconnect:${IMAGE_TAG} \
+            -t braiki89/eventconnect:latest \
+            .
 
       - name: Push Docker image
-        run: docker push braiki89/eventconnect:latest
+        run: |
+          docker push braiki89/eventconnect:${IMAGE_TAG}
+          docker push braiki89/eventconnect:latest
+
+      - name: Docker image information
+        run: |
+          echo "🐳 Docker image:"
+          echo "braiki89/eventconnect:${IMAGE_TAG}"
+
