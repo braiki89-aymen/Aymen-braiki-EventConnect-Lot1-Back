@@ -124,40 +124,6 @@ public String processUserRegistration(String username, String email, String pass
     }
 }
 
-public Event createEvent(EventRequest request) {
-
-        if (request == null) {
-            throw new IllegalArgumentException("Event request cannot be null");
-        }
-
-        if (request.getTitle() == null || request.getTitle().isBlank()) {
-            throw new IllegalArgumentException("Event title is required");
-        }
-
-        if (request.getCapacity() <= 0) {
-            throw new IllegalArgumentException("Capacity must be greater than 0");
-        }
-
-        if (request.getStartDate() == null || request.getEndDate() == null) {
-            throw new IllegalArgumentException("Event dates are required");
-        }
-
-        if (request.getStartDate().isAfter(request.getEndDate())) {
-            throw new IllegalArgumentException(
-                    "Start date cannot be after end date"
-            );
-        }
-
-        Event event = new Event();
-
-        event.setTitle(request.getTitle().trim());
-        event.setDescription(request.getDescription());
-        event.setCapacity(request.getCapacity());
-        event.setStartDate(request.getStartDate());
-        event.setEndDate(request.getEndDate());
-
-        return eventRepository.save(event);
-    }
 
 
 
