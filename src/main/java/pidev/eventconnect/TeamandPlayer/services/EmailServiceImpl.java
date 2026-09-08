@@ -159,6 +159,22 @@ public String processUserRegistration(String username, String email, String pass
         return eventRepository.save(event);
     }
 
+    public void sendPasswordResetEmail(String email, String resetToken) {
 
+    String resetLink = "http://localhost:4200/reset-password?token=" + resetToken;
+
+    SimpleMailMessage message = new SimpleMailMessage();
+    message.setTo(email);
+    message.setSubject("Réinitialisation de votre mot de passe");
+    message.setText(
+        "Bonjour,\n\n" +
+        "Cliquez sur le lien suivant pour réinitialiser votre mot de passe :\n" +
+        resetLink + "\n\n" +
+        "Ce lien est valable pendant une durée limitée.\n\n" +
+        "Cordialement"
+    );
+
+    mailSender.send(message);
+}
 
 }
